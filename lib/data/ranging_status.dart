@@ -1,0 +1,4 @@
+enum RangingStatus {
+  success,
+  failure,
+}
