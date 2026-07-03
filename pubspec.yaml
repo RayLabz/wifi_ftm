@@ -1,10 +1,12 @@
 name: wifi_ftm
-description: "A new Flutter plugin project."
-version: 0.0.1
-homepage:
+description: A Flutter plugin for WiFi Fine Timing Measurement (FTM) and Round-Trip-Time (RTT) ranging, supporting both 802.11mc and 802.11az (Android 15+).
+version: 1.0.0
+homepage: https://github.com/your-username/wifi_ftm # Replace with your actual repository URL
+repository: https://github.com/your-username/wifi_ftm
+issue_tracker: https://github.com/your-username/wifi_ftm/issues
 
 environment:
-  sdk: ^3.12.0
+  sdk: '>=3.0.0 <4.0.0'
   flutter: '>=3.3.0'
 
 dependencies:

@@ -5,8 +5,8 @@ import 'package:wifi_ftm/wifi_ftm.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
 
-import 'my_app.dart';
+import 'ftm_example_app.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const FTMExampleApp());
 }

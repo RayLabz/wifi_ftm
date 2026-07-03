@@ -6,16 +6,16 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:wifi_ftm/data/ap_scan_result.dart';
 import 'package:wifi_ftm/wifi_ftm.dart';
 
-import 'ap_details_page.dart';
+import 'ap_details_screen.dart';
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   String message = 'Checking...';
   List<APScanResult> scanResults = [];
   bool isScanning = false;
@@ -23,7 +23,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    // Observe lifecycle changes to re-check support when the app is resumed.
     WidgetsBinding.instance.addObserver(this);
+    // Initial check for device support and permissions after the first frame.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       checkSupport();
     });
@@ -42,6 +44,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
   }
 
+  /// Requests necessary permissions for Wi-Fi scanning and RTT ranging.
+  /// On Android, this includes Location and Nearby Wi-Fi Devices (for Android 13+).
   Future<bool> requestPermissions() async {
     final permissions = <Permission>[Permission.location];
     if (Platform.isAndroid) {
@@ -51,6 +55,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     return result.values.every((status) => status.isGranted);
   }
 
+  /// Checks if the device and system settings support Wi-Fi RTT.
+  /// Validates permissions, location services, and hardware capability.
   Future<void> checkSupport() async {
     final permissionsGranted = await requestPermissions();
 
@@ -82,15 +88,18 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
 
     final hasPermissions = await wifiFtm.hasPermissions();
-    final getCapabilities = await wifiFtm.getCapabilities();
+    final capabilities = await wifiFtm.getCapabilities();
 
     setState(() {
       message = 'Wi-Fi RTT Supported\n';
-      message += "hasPermissions: $hasPermissions\n";
-      message += "Capabilities: $getCapabilities\n";
+      message += "Permissions: ${capabilities.permissionsGranted}\n";
+      message += "SDK Version: ${capabilities.androidVersion}\n";
+      message += "RTT Hardware: ${capabilities.isWifiRttSupported}\n";
+      message += "802.11az Support: ${capabilities.isWifi80211azSupported}\n";
     });
   }
 
+  /// Triggers a Wi-Fi scan to discover nearby Access Points.
   Future<void> startScan() async {
     setState(() {
       isScanning = true;
@@ -111,6 +120,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
   }
 
+  /// Verifies if Location Services are enabled, which is required for Wi-Fi scanning on Android.
+  /// Prompts the user to open settings if disabled.
   Future<bool> ensureLocationEnabled(BuildContext context) async {
     final enabled = await Geolocator.isLocationServiceEnabled();
 
@@ -174,17 +185,18 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             ),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text(message, textAlign: TextAlign.center),
-          ),
-          const Divider(),
-          Expanded(
-            child: ListView.builder(
-              itemCount: scanResults.length,
-              itemBuilder: (context, index) {
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(message, textAlign: TextAlign.center),
+            ),
+            const Divider(),
+            Expanded(
+              child: ListView.builder(
+                itemCount: scanResults.length,
+                itemBuilder: (context, index) {
                 final ap = scanResults[index];
                 final supportsRanging = ap.is80211mcResponder || ap.is80211azResponder;
                 return ListTile(
@@ -202,19 +214,20 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       const Icon(Icons.chevron_right),
                     ],
                   ),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => APDetailsPage(ap: ap),
-                      ),
-                    );
-                  },
-                );
-              },
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => APDetailsScreen(ap: ap),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -1,14 +1,32 @@
 import 'package:wifi_ftm/data/ranging_status.dart';
 
+/// Represents the result of a WiFi RTT ranging operation to a specific access point.
 class RangingResult {
+  /// The MAC address of the target access point.
   final String macAddress;
+
+  /// The status of the ranging operation (success or failure).
   final RangingStatus status;
+
+  /// The estimated distance to the access point in millimeters.
   final int distanceMm;
+
+  /// The standard deviation of the measured distance in millimeters.
   final int distanceStdDevMm;
+
+  /// The signal strength (RSSI) of the ranging measurements in dBm.
   final int rssi;
+
+  /// The total number of measurement attempts made.
   final int numAttemptedMeasurements;
+
+  /// The number of measurements that were successfully completed.
   final int numSuccessfulMeasurements;
+
+  /// The timestamp in milliseconds when the ranging was performed.
   final int timestamp;
+
+  /// Indicates if 802.11az (Next Gen Positioning) was used for this measurement.
   final bool is80211azResult;
 
   RangingResult({
@@ -23,6 +41,7 @@ class RangingResult {
     required this.is80211azResult,
   });
 
+  /// Creates a [RangingResult] from a map received via the platform channel.
   factory RangingResult.fromMap(Map<dynamic, dynamic> map) {
     return RangingResult(
       macAddress: map['macAddress'] ?? '',
@@ -37,6 +56,7 @@ class RangingResult {
     );
   }
 
+  /// The estimated distance to the access point in meters.
   double get distanceMeters => distanceMm / 1000.0;
 
   @override

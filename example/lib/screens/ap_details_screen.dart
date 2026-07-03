@@ -4,22 +4,24 @@ import 'package:wifi_ftm/data/ranging_result.dart';
 import 'package:wifi_ftm/data/ranging_status.dart';
 import 'package:wifi_ftm/wifi_ftm.dart';
 
-class APDetailsPage extends StatefulWidget {
+class APDetailsScreen extends StatefulWidget {
 
   final APScanResult ap;
 
-  const APDetailsPage({super.key, required this.ap});
+  const APDetailsScreen({super.key, required this.ap});
 
   @override
-  State<APDetailsPage> createState() => _APDetailsPageState();
+  State<APDetailsScreen> createState() => _APDetailsScreenState();
 }
 
-class _APDetailsPageState extends State<APDetailsPage> {
+class _APDetailsScreenState extends State<APDetailsScreen> {
 
   RangingResult? rangingResult;
   bool isRanging = false;
   String? error;
 
+  /// Performs RTT ranging to the specific Access Point.
+  /// Uses the BSSID to target the measurement.
   Future<void> performRanging() async {
     setState(() {
       isRanging = true;
@@ -29,6 +31,7 @@ class _APDetailsPageState extends State<APDetailsPage> {
 
     try {
       final wifiFtm = WifiFtm();
+      // Start ranging for the specific BSSID of this Access Point.
       final results = await wifiFtm.startRanging([widget.ap.bssid]);
       if (results.isNotEmpty) {
         setState(() {
@@ -51,6 +54,7 @@ class _APDetailsPageState extends State<APDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Check if the Access Point supports either 802.11mc (Wi-Fi 5/6 RTT) or 802.11az (Wi-Fi 6E/7 RTT).
     final supportsRanging = widget.ap.is80211mcResponder || widget.ap.is80211azResponder;
 
     return Scaffold(
@@ -70,7 +74,12 @@ class _APDetailsPageState extends State<APDetailsPage> {
           const Divider(),
           const Text('Capabilities:', style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          Text(widget.ap.capabilities),
+          Wrap(
+            spacing: 8,
+            children: widget.ap.capabilities
+                .map((cap) => Chip(label: Text(cap, style: const TextStyle(fontSize: 12))))
+                .toList(),
+          ),
           const SizedBox(height: 24),
           if (supportsRanging) ...[
             Center(

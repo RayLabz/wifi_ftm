@@ -25,21 +25,29 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 
+/**
+ * WifiFtmPlugin provides WiFi Fine Timing Measurement (FTM) and Round-Trip-Time (RTT) ranging
+ * capabilities for Flutter applications on Android.
+ */
 public class WifiFtmPlugin implements FlutterPlugin, MethodChannel.MethodCallHandler {
 
     private MethodChannel channel;
     private Context context;
     private WifiManager wifiManager;
     private WifiRttManager wifiRttManager;
+
+    /** Stores results from the last scan to be used for ranging requests. */
     private final Map<String, ScanResult> lastScanResults = new HashMap<>();
 
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
         context = binding.getApplicationContext();
+        // Initialize WiFi and RTT managers
         wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             wifiRttManager = (WifiRttManager) context.getSystemService(Context.WIFI_RTT_RANGING_SERVICE);
         }
+        // Setup method channel
         channel = new MethodChannel(binding.getBinaryMessenger(), "wifi_ftm");
         channel.setMethodCallHandler(this);
     }
@@ -51,6 +59,7 @@ public class WifiFtmPlugin implements FlutterPlugin, MethodChannel.MethodCallHan
 
     @Override
     public void onMethodCall(@NonNull MethodCall call, @NonNull MethodChannel.Result result) {
+        // Handle incoming method calls from Flutter
         switch (call.method) {
             case "isSupported":
                 result.success(isSupported());
@@ -72,13 +81,22 @@ public class WifiFtmPlugin implements FlutterPlugin, MethodChannel.MethodCallHan
         }
     }
 
+    /**
+     * Checks if the device supports WiFi RTT feature.
+     * @return True if supported, false otherwise.
+     */
     private boolean isSupported() {
         return context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_WIFI_RTT);
     }
 
+    /**
+     * Checks if necessary permissions (Location and Nearby Devices) are granted.
+     * @return True if all required permissions are granted.
+     */
     private boolean hasPermissions() {
         boolean locationGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
 
+        // Android 13+ (API 33) requires NEARBY_WIFI_DEVICES for WiFi operations
         if (Build.VERSION.SDK_INT >= 33) {
             boolean wifiGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.NEARBY_WIFI_DEVICES) == PackageManager.PERMISSION_GRANTED;
             return locationGranted && wifiGranted;
@@ -87,17 +105,27 @@ public class WifiFtmPlugin implements FlutterPlugin, MethodChannel.MethodCallHan
         return locationGranted;
     }
 
+    /**
+     * Retrieves device RTT capabilities, including 802.11az support.
+     * @return A map containing RTT status and capability details.
+     */
     private Map<String, Object> getCapabilities() {
         Map<String, Object> caps = new HashMap<>();
         caps.put("wifiRtt", isSupported());
         caps.put("permissionsGranted", hasPermissions());
         caps.put("androidVersion", Build.VERSION.SDK_INT);
+
+        // Check for 802.11az (Next Gen Positioning) support on Android 15+
         if (Build.VERSION.SDK_INT >= 35 && wifiRttManager != null) {
             caps.put("is11azNtbSupported", wifiRttManager.getRttCharacteristics().getBoolean(android.net.wifi.rtt.WifiRttManager.CHARACTERISTICS_KEY_BOOLEAN_NTB_INITIATOR));
         }
         return caps;
     }
 
+    /**
+     * Scans for nearby WiFi access points and identifies RTT responders.
+     * @param result Flutter result to return the list of scanned APs.
+     */
     private void scanAccessPoints(MethodChannel.Result result) {
         if (!hasPermissions()) {
             result.error("PERMISSION_DENIED", "Required permissions not granted", null);
@@ -110,7 +138,9 @@ public class WifiFtmPlugin implements FlutterPlugin, MethodChannel.MethodCallHan
             lastScanResults.clear();
 
             for (ScanResult scanResult : scanResults) {
+                // Cache scan result for later ranging
                 lastScanResults.put(scanResult.BSSID, scanResult);
+                
                 Map<String, Object> map = new HashMap<>();
                 map.put("ssid", scanResult.SSID);
                 map.put("bssid", scanResult.BSSID);
@@ -119,12 +149,14 @@ public class WifiFtmPlugin implements FlutterPlugin, MethodChannel.MethodCallHan
                 map.put("timestamp", scanResult.timestamp);
                 map.put("capabilities", scanResult.capabilities);
 
+                // Identify 802.11mc (legacy RTT) support
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     map.put("is80211mcResponder", scanResult.is80211mcResponder());
                 } else {
                     map.put("is80211mcResponder", false);
                 }
 
+                // Identify 802.11az (Next Gen Positioning) support
                 if (Build.VERSION.SDK_INT >= 35) {
                     map.put("is80211azResponder", scanResult.is80211azNtbResponder());
                 } else {
@@ -139,6 +171,11 @@ public class WifiFtmPlugin implements FlutterPlugin, MethodChannel.MethodCallHan
         }
     }
 
+    /**
+     * Initiates RTT ranging towards the specified access points.
+     * @param call Method call containing the BSSID list.
+     * @param result Flutter result to return the ranging results.
+     */
     private void startRanging(MethodCall call, MethodChannel.Result result) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P || wifiRttManager == null) {
             result.error("UNSUPPORTED", "WiFi RTT is not supported on this device/version", null);
@@ -151,6 +188,7 @@ public class WifiFtmPlugin implements FlutterPlugin, MethodChannel.MethodCallHan
             return;
         }
 
+        // Build the ranging request from cached scan results
         RangingRequest.Builder builder = new RangingRequest.Builder();
         int addedCount = 0;
         for (String bssid : bssids) {
@@ -187,6 +225,7 @@ public class WifiFtmPlugin implements FlutterPlugin, MethodChannel.MethodCallHan
                         map.put("numSuccessfulMeasurements", res.getNumSuccessfulMeasurements());
                         map.put("timestamp", res.getRangingTimestampMillis());
                         
+                        // Check if 802.11az was used for this measurement
                         if (Build.VERSION.SDK_INT >= 35) {
                             map.put("is80211azResult", res.is80211azNtbMeasurement());
                         } else {
