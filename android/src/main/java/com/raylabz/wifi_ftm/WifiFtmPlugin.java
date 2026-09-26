@@ -214,28 +214,58 @@ public class WifiFtmPlugin implements FlutterPlugin, MethodChannel.MethodCallHan
                 @Override
                 public void onRangingResults(@NonNull List<RangingResult> results) {
                     List<Map<String, Object>> resultsList = new ArrayList<>();
+
                     for (RangingResult res : results) {
                         Map<String, Object> map = new HashMap<>();
-                        map.put("macAddress", res.getMacAddress() != null ? res.getMacAddress().toString() : "");
-                        map.put("status", res.getStatus());
-                        map.put("distanceMm", res.getDistanceMm());
-                        map.put("distanceStdDevMm", res.getDistanceStdDevMm());
-                        map.put("rssi", res.getRssi());
-                        map.put("numAttemptedMeasurements", res.getNumAttemptedMeasurements());
-                        map.put("numSuccessfulMeasurements", res.getNumSuccessfulMeasurements());
-                        map.put("timestamp", res.getRangingTimestampMillis());
-                        
-                        // Check if 802.11az was used for this measurement
-                        if (Build.VERSION.SDK_INT >= 35) {
-                            map.put("is80211azResult", res.is80211azNtbMeasurement());
+
+                        map.put(
+                                "macAddress",
+                                res.getMacAddress() != null
+                                        ? res.getMacAddress().toString()
+                                        : ""
+                        );
+
+                        int status = res.getStatus();
+                        map.put("status", status);
+
+                        if (status == RangingResult.STATUS_SUCCESS) {
+                            map.put("distanceMm", res.getDistanceMm());
+                            map.put("distanceStdDevMm", res.getDistanceStdDevMm());
+                            map.put("rssi", res.getRssi());
+                            map.put("numAttemptedMeasurements",
+                                    res.getNumAttemptedMeasurements());
+                            map.put("numSuccessfulMeasurements",
+                                    res.getNumSuccessfulMeasurements());
+                            map.put("timestamp",
+                                    res.getRangingTimestampMillis());
+
+                            if (Build.VERSION.SDK_INT >= 35) {
+                                map.put(
+                                        "is80211azResult",
+                                        res.is80211azNtbMeasurement()
+                                );
+                            } else {
+                                map.put("is80211azResult", false);
+                            }
+
                         } else {
+                            // Measurement failed.
+                            // Do NOT call getDistanceMm(), getRssi(), etc.
+                            map.put("distanceMm", null);
+                            map.put("distanceStdDevMm", null);
+                            map.put("rssi", null);
+                            map.put("numAttemptedMeasurements", null);
+                            map.put("numSuccessfulMeasurements", null);
+                            map.put("timestamp", null);
                             map.put("is80211azResult", false);
                         }
-                        
+
                         resultsList.add(map);
                     }
+
                     result.success(resultsList);
                 }
+
             });
         } catch (Exception e) {
             result.error("RANGING_ERROR", e.getMessage(), null);

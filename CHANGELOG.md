@@ -1,3 +1,7 @@
+## 0.2.0
+* Fixed bug `onRangingResults` when status of measurement fails, not to add invalid measurement values into the results
+which previously caused an `InvalidStateException`.
+
 ## 0.1.0
 
 * Initial release.
